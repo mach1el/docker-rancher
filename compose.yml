@@ -12,14 +12,6 @@ x-op-restart-policy: &restart_policy
   restart: unless-stopped
 
 services:
-  certs:
-    image: alpine
-    volumes:
-      - certs:/etc/ssl/traefik
-    command: sh -c "cd /etc/ssl/traefik
-      && wget traefik.me/cert.pem -O cert.pem
-      && wget traefik.me/privkey.pem -O privkey.pem"
-  
   traefik:
     hostname: traefik
     image: traefik:latest
@@ -80,3 +72,11 @@ services:
       - "traefik.http.routers.rancher.entrypoints=websecure"
       - "traefik.http.routers.rancher.tls=true"
     <<: *restart_policy
+
+  certs:
+    image: alpine
+    volumes:
+      - certs:/etc/ssl/traefik
+    command: sh -c "cd /etc/ssl/traefik
+      && wget traefik.me/cert.pem -O cert.pem
+      && wget traefik.me/privkey.pem -O privkey.pem"
