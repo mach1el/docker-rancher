@@ -5,53 +5,12 @@ networks:
     driver: bridge
 
 volumes:
-  certs: {}
   rancher_data: {}
 
 x-op-restart-policy: &restart_policy
   restart: unless-stopped
 
 services:
-  traefik:
-    hostname: traefik
-    image: traefik:latest
-    container_name: traefik
-    networks:
-      - rancher
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./traefik/tls.yml:/etc/traefik/tls.yml:ro
-      - certs:/etc/ssl/traefik:ro
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=rancher"
-      - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
-      - "traefik.http.routers.dashboard.rule=Host(`rancher-tf.${DOMAIN:-traefik.me}`)"
-      - "traefik.http.routers.dashboard.entrypoints=websecure"
-      - "traefik.http.routers.dashboard.tls=true"
-      - "traefik.http.routers.dashboard.middlewares=dashboard-auth"
-      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_USER?Variable is not set}:${TRAEFIK_PASSWD?Variable is not set}"
-    command:
-      - "--api"
-      - "--log.level=DEBUG"
-      - "--api.insecure=true"
-      - "--metrics.prometheus=true"
-      - "--metrics.prometheus.buckets=0.1,0.3,1.2,5.0"
-      - "--providers.docker=true"
-      - "--providers.docker.watch"
-      - "--providers.file.filename=/etc/traefik/tls.yml"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.websecure.address=:443"
-    <<: *restart_policy
-
   rancher:
     hostname: rancher
     image: rancher/rancher:latest
@@ -59,24 +18,13 @@ services:
     privileged: true
     networks:
       - rancher
+    ports:
+      - 80:80
+      - 443:443
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
       - rancher_data:/var/lib/rancher
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=rancher"
-      - "traefik.http.routers.rancher.service=rancher"
-      - "traefik.http.services.rancher.loadbalancer.server.port=80"
-      - "traefik.http.routers.rancher.rule=Host(`rancher.${DOMAIN:-traefik.me}`)"
-      - "traefik.http.routers.rancher.entrypoints=websecure"
-      - "traefik.http.routers.rancher.tls=true"
+    command:
+      - '--acme-domain=rancher.jayeson.com.sg'
     <<: *restart_policy
-
-  certs:
-    image: alpine
-    volumes:
-      - certs:/etc/ssl/traefik
-    command: sh -c "cd /etc/ssl/traefik
-      && wget traefik.me/cert.pem -O cert.pem
-      && wget traefik.me/privkey.pem -O privkey.pem"
